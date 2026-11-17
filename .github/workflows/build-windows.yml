@@ -39,11 +39,12 @@ jobs:
         with:
           key: windows-${{ matrix.arch }}
 
-      - name: Add the cross toolchain
+      - name: Add the cross target
         if: matrix.arch != 'x64'
-        run: |
-          rustup target add ${{ matrix.target }}
-          rustup toolchain install --force-non-host stable-${{ matrix.target }}
+        # The windows-latest image already carries the MSVC toolsets for x86
+        # and ARM64; a second rustup toolchain is not only unnecessary, it
+        # fails to resolve `stable-<target>` for some targets.
+        run: rustup target add ${{ matrix.target }}
 
       - uses: pnpm/action-setup@v4
         with:

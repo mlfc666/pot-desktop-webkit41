@@ -73,7 +73,26 @@ jobs:
         run: pnpm build
 
       - name: Compile the app
-        run: cargo build --release --features custom-protocol --manifest-path src-tauri/Cargo.toml
+        run: |
+          set -o pipefail
+          if ! cargo build --release --features custom-protocol --manifest-path src-tauri/Cargo.toml > /tmp/cargo.log 2>&1; then
+            grep -E '^error' -A 6 /tmp/cargo.log | head -80 || true
+            tail -n 40 /tmp/cargo.log
+            # The Actions log download endpoint is unreachable from some
+            # networks; annotations travel over api.github.com and carry the
+            # first compiler errors with them.
+            while IFS= read -r line; do echo "::error::$line"; done < <(grep -E '^error' /tmp/cargo.log | head -5 | cut -c1-400)
+            exit 1
+          fi
+          tail -n 5 /tmp/cargo.log
+
+      - name: Keep the compiler log if the build broke
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-log-${{ matrix.arch }}
+          path: /tmp/cargo.log
+          if-no-files-found: ignore
 
       - name: Build the .deb with dpkg -S derived dependencies
         run: bash scripts/package-deb.sh
