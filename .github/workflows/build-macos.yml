@@ -1,8 +1,7 @@
 name: build-macos
 
-# One native runner per architecture: macos-15 is Apple Silicon, macos-13 is the
-# last Intel image. No cross-compilation, so the DMGs carry binaries built by
-# the toolchain that ships on that image.
+# One Apple Silicon runner builds both architectures: the macOS toolchain ships
+# both SDK slices, and macos-13 (the last Intel image) is retired.
 on:
   workflow_dispatch:
   push:
@@ -20,16 +19,17 @@ permissions:
 jobs:
   build:
     name: macos-${{ matrix.arch }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15
-            arch: aarch64
+          # Both targets are built on the Apple Silicon image: the macOS toolchain
+          # cross-compiles x86_64 fine, and the macos-13 Intel image has been
+          # retired, so asking for it just leaves the job queued forever.
+          - arch: aarch64
             target: aarch64-apple-darwin
-          - runner: macos-13
-            arch: x86_64
+          - arch: x86_64
             target: x86_64-apple-darwin
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +39,8 @@ jobs:
       # after the type-inference change tracked in rust-lang/rust#148922. 1.99.1
       # is the version the packages in the release were built and tested with.
       - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: ${{ matrix.target }}
       - name: Record the toolchain
         run: rustc -vV
       - uses: Swatinem/rust-cache@v2
