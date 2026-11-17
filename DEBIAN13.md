@@ -139,7 +139,10 @@ sudo apt install ./pot_3.0.7_arm64.deb
 
 ## 6. 已知限制
 
-- 只实测了 **arm64**；x86_64 理论上同样适用（同一套补丁），但没有真机验证，也没有 CI。
+- **Rust 必须固定 1.99.1**（或更早）。更新的编译器里 `!` 不再实现 `FromIterator<()>`
+  （rust-lang/rust#148922），会让 `wl-clipboard-rs 0.8.1`（`arboard` 的 Wayland 剪贴板后端）
+  在 `copy.rs:591` 报 `E0277`。CI 三条 workflow 都用 `dtolnay/rust-toolchain@1.99.1`。
+- 只实测了 **arm64** 真机；x86_64 由 CI 构建产出，但没有在本机跑过。
 - 未迁移到 Tauri 2，因此仍继承 Tauri 1 在 Linux 上的既有问题（如个别桌面环境的托盘/快捷键差异）。
 - OCR 走的是系统 `tesseract`，需要安装对应语言包（`tesseract-ocr-chi-sim` 等）。
 - `vendor/` 里的三个 crate 是从 crates.io 拷出来打的补丁，体积约 2 MB；升级 Tauri/WebKitGTK 时
@@ -181,8 +184,10 @@ gh workflow run build-windows.yml --repo mlfc666/pot-desktop-webkit41
 - **AppImage 只出 x86_64**：linuxdeploy 系工具链对 arm64 支持不稳定，arm64 给 deb/rpm 更可靠。
 - **签名默认关闭**：macOS 未配置 `APPLE_*` secrets 时产出未签名 DMG（首次打开需右键→打开）；
   updater 签名（`TAURI_PRIVATE_KEY`）也未启用，因此不产出 `.sig` 和 `update.json`。
-- `windows-latest` 上 i686/arm64 通过 `rustup toolchain install --force-non-host` 借用
-  镜像里已有的 MSVC 工具集，和上游做法一致。
+- `windows-latest` 上 i686/arm64 只要 `rustup target add` 即可，镜像里已有对应 MSVC 工具集；
+  上游多加的 `rustup toolchain install --force-non-host stable-<target>` 在 i686 上会失败。
+- macOS 默认产出**未签名** DMG：把空的 `APPLE_*` 变量塞给 Tauri 1 会让它用空身份去 codesign 而失败。
+  需要签名时再补 keychain 导入步骤和 secrets。
 
 ## 8. 许可
 
