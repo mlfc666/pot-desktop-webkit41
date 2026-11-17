@@ -56,3 +56,12 @@ window-shadows = "0.2"
 # this feature is used for production builds or when `devPath` points to the filesystem
 # DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+
+# Debian 13 dropped WebKitGTK 4.0 and Tauri 1.8 is pinned to it. These two
+# vendored copies build against the system WebKitGTK 4.1 / libsoup3 instead:
+# webkit2gtk without its unused soup2 dependency, wry with the SettingsExt
+# import the newer bindings need. See vendor/PATCHES.md.
+[patch.crates-io]
+webkit2gtk = { path = "vendor/webkit2gtk" }
+wry = { path = "vendor/wry" }
+soup2-sys = { path = "vendor/soup2-sys" }
