@@ -4,6 +4,12 @@
 
 > 🌈 一个跨平台的划词翻译软件 ([QQ 频道](https://pd.qq.com/s/akns94e1r))
 
+> **本仓库是 [pot-app/pot-desktop](https://github.com/pot-app/pot-desktop) 的 WebKitGTK 4.1 分支**
+> 上游 3.0.7 依赖已于 Debian 13 中移除的 WebKitGTK 4.0，无法在新发行版上构建或运行。
+> 本分支只把两个 GUI crate 移植到 WebKitGTK 4.1 / libsoup3，应用代码零改动；
+> 构建方法、补丁细节与已验证平台见 **[DEBIAN13.md](./DEBIAN13.md)**，
+> arm64 安装包见 [Releases](https://github.com/mlfc666/pot-desktop-webkit41/releases)。
+
 ![License](https://img.shields.io/github/license/pot-app/pot-desktop.svg)
 ![Tauri](https://img.shields.io/badge/Tauri-1.6.8-blue?logo=tauri)
 ![JavaScript](https://img.shields.io/badge/-JavaScript-yellow?logo=javascript&logoColor=white)
