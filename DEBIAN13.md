@@ -145,7 +145,46 @@ sudo apt install ./pot_3.0.7_arm64.deb
 - `vendor/` 里的三个 crate 是从 crates.io 拷出来打的补丁，体积约 2 MB；升级 Tauri/WebKitGTK 时
   需要重新对照 `vendor/PATCHES.md` 复核。
 
-## 7. 许可
+## 7. CI 构建矩阵
+
+`.github/workflows/` 下三条 workflow，全部是**原生 runner**，不做交叉编译：
+
+| workflow | runner | 目标 | 产物 |
+| --- | --- | --- | --- |
+| `build-linux.yml` | `ubuntu-24.04` | x86_64 | `.deb` + `.rpm` + `.AppImage` |
+| `build-linux.yml` | `ubuntu-24.04-arm` | arm64 | `.deb` + `.rpm` |
+| `build-macos.yml` | `macos-15` (Apple Silicon) | aarch64 | `.dmg` |
+| `build-macos.yml` | `macos-13` (Intel) | x86_64 | `.dmg` |
+| `build-windows.yml` | `windows-latest` | x86_64 / i686 / arm64 | NSIS `-setup.exe` |
+
+为什么 Linux 必须用 24.04 而不是 22.04：22.04 只有 WebKitGTK 4.0，本 fork 的
+`vendor/` crate 需要 4.1；24.04 正好只提供 4.1，和 Debian 13 一致。arm64 用
+`ubuntu-24.04-arm` 原生跑，避免 qemu 模拟和交叉编译带来的链接风险。
+
+触发方式：
+
+```sh
+gh workflow run build-linux.yml --repo mlfc666/pot-desktop-webkit41
+gh workflow run build-macos.yml --repo mlfc666/pot-desktop-webkit41
+gh workflow run build-windows.yml --repo mlfc666/pot-desktop-webkit41
+```
+
+打 tag 推送（`git push origin v3.0.7-webkit41`）时三条 workflow 都会跑，并把产物
+附加到同名 Release。PR 只跑构建，不发 Release。
+
+几个刻意的取舍：
+
+- **Linux 的 .deb 不用 Tauri 自带 bundler**，改用 `scripts/package-deb.sh`：Tauri 1 的
+  依赖表是按 WebKitGTK **4.0** 写死的（`libwebkit2gtk-4.0-37`），在 24.04 上会写出装不上的包；
+  我们的脚本从二进制 `NEEDED` 反查 `dpkg -S`，得到的就是 `libwebkit2gtk-4.1-0`、
+  `libsoup-3.0-0`、`libgtk-3-0t64` 这些真实包名。rpm/AppImage 仍走 Tauri bundler。
+- **AppImage 只出 x86_64**：linuxdeploy 系工具链对 arm64 支持不稳定，arm64 给 deb/rpm 更可靠。
+- **签名默认关闭**：macOS 未配置 `APPLE_*` secrets 时产出未签名 DMG（首次打开需右键→打开）；
+  updater 签名（`TAURI_PRIVATE_KEY`）也未启用，因此不产出 `.sig` 和 `update.json`。
+- `windows-latest` 上 i686/arm64 通过 `rustup toolchain install --force-non-host` 借用
+  镜像里已有的 MSVC 工具集，和上游做法一致。
+
+## 8. 许可
 
 原项目为 **GPL-3.0**，本仓库保留原 `LICENSE` 与完整 git 历史，属于 GPL-3.0 的修改版本，
 同样以 GPL-3.0 分发。修改点见本文第 2 节及 `src-tauri/vendor/PATCHES.md`。
