@@ -4,11 +4,37 @@
 
 > 🌈 一个跨平台的划词翻译软件 ([QQ 频道](https://pd.qq.com/s/akns94e1r))
 
-> **本仓库是 [pot-app/pot-desktop](https://github.com/pot-app/pot-desktop) 的 WebKitGTK 4.1 分支**
-> 上游 3.0.7 依赖已于 Debian 13 中移除的 WebKitGTK 4.0，无法在新发行版上构建或运行。
-> 本分支只把两个 GUI crate 移植到 WebKitGTK 4.1 / libsoup3，应用代码零改动；
-> 构建方法、补丁细节与已验证平台见 **[DEBIAN13.md](./DEBIAN13.md)**，
-> arm64 安装包见 [Releases](https://github.com/mlfc666/pot-desktop-webkit41/releases)。
+---
+
+## 本分支提供了什么（v3.0.8）
+
+上游 `pot-app/pot-desktop` 已归档，最后一版 3.0.7 依赖 **WebKitGTK 4.0**，而 Debian 13+、
+Ubuntu 24.04+、Fedora 40+、Arch 等早已移除该库，因此上游源码在今天的 Linux 上**既装不了也编不过**。
+本分支做了这些升级：
+
+-   **WebKitGTK 4.1 / libsoup3 移植** —— 应用代码零改动，只替换两个 GUI 依赖 crate；
+    产物真正链接 `libwebkit2gtk-4.1.so.0`，启动后用的是系统的 `webkit2gtk-4.1` 进程。
+-   **覆盖所有主流 Linux 发行版** —— 每个架构都提供 deb / rpm / `.pkg.tar.zst`(Arch) / AppImage。
+-   **全平台、全架构自动构建** —— GitHub Actions 在原生 runner 上产出 x86_64 与 arm64 的
+    Linux 包、Apple Silicon 与 Intel 的 dmg、x64/x86/arm64 三个 Windows 安装包。
+-   **可复现** —— 构建脚本、补丁说明和 CI 矩阵都在仓库里，见 **[LINUX.md](./LINUX.md)**。
+
+### 下载（v3.0.8）
+
+| 系统 | 包 |
+| --- | --- |
+| Debian / Ubuntu / Mint | `pot_3.0.8_amd64.deb`、`pot_3.0.8_arm64.deb` |
+| Fedora / RHEL / openSUSE | `pot-3.0.8-1.x86_64.rpm`、`pot-3.0.8-1.aarch64.rpm` |
+| Arch / Manjaro / EndeavourOS | `pot-3.0.8-1-x86_64.pkg.tar.zst`、`pot-3.0.8-1-aarch64.pkg.tar.zst` |
+| 任意 Linux（免安装） | `pot_3.0.8_amd64.AppImage` |
+| macOS（Apple Silicon / Intel） | `pot_3.0.8_aarch64.dmg`、`pot_3.0.8_x64.dmg` |
+| Windows（x64 / x86 / arm64） | `pot_3.0.8_{x64,x86,arm64}-setup.exe` |
+
+全部见 [Releases](https://github.com/mlfc666/pot-desktop-webkit41/releases)。
+
+> 以下内容保留上游 README 原文，应用功能本身未做改动。
+
+---
 
 ![License](https://img.shields.io/github/license/pot-app/pot-desktop.svg)
 ![Tauri](https://img.shields.io/badge/Tauri-1.6.8-blue?logo=tauri)

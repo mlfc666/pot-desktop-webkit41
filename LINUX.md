@@ -1,26 +1,33 @@
-# Pot on Debian 13 / WebKitGTK 4.1
+# 在现代 Linux 上构建 Pot（WebKitGTK 4.1）
 
-这个仓库是 [pot-app/pot-desktop](https://github.com/pot-app/pot-desktop) 3.0.7 的
-**WebKitGTK 4.1 移植版**，目标是在 **Debian 13 (trixie)** 及同类发行版
-（Ubuntu 24.04+、Fedora 40+ 等已经只提供 WebKitGTK 4.1 的系统）上**从源码构建并能正常运行**。
+这个仓库是 [pot-app/pot-desktop](https://github.com/pot-app/pot-desktop) 的 **3.0.8 分支**，
+把上游的 WebKitGTK 4.0 依赖移植到 **WebKitGTK 4.1 / libsoup3**，让它在任何已经放弃
+WebKitGTK 4.0 的发行版上都能从源码构建并正常运行：
 
-应用自身的业务代码**一行未改**；改动集中在两个 GUI 依赖 crate 上。
+- Debian 13 (trixie) 及之后的版本
+- Ubuntu 24.04 LTS 及之后（22.04 仍只有 4.0，不可用）
+- Fedora 40+、RHEL/CentOS Stream 10+
+- Arch Linux、Manjaro、EndeavourOS 等滚动发行版
+- openSUSE Tumbleweed
+
+应用自身的业务代码**一行未改**，改动集中在两个 GUI 依赖 crate 上；发行包覆盖
+deb / rpm / pkg.tar.zst / AppImage（详见下文）。
 
 > Upstream `pot-app/pot-desktop` 已归档（archived）。本 fork 保留其 GPL-3.0 许可与全部历史，
-> 仅做发行版兼容性维护。
+> 只做发行版兼容性与打包维护。
 
 ---
 
-## 1. 为什么需要这个 fork
+## 1. 为什么要这个分支
 
-Pot 3.0.7 是 Tauri 1.8 应用，而 Tauri 1.8 的 Linux 后端锁死在 WebKitGTK **4.0**：
+上游 3.0.7 是 Tauri 1.8 应用，而 Tauri 1.8 的 Linux 后端锁死在 WebKitGTK **4.0**：
 
 ```
 pot → tauri 1.8.1 → wry 0.24.11 → webkit2gtk 0.18.2 → webkit2gtk-4.0 + soup2(libsoup-2.4)
 ```
 
-Debian 13 移除了整个 `libwebkit2gtk-4.0*`（仓库里只剩 `libwebkit2gtk-4.0-doc` 这个
-transitional 空壳），只提供 `libwebkit2gtk-4.1`（基于 libsoup3）。因此：
+现代发行版（Debian 13+、Ubuntu 24.04+、Fedora 40+、Arch 等）都已移除整个
+`libwebkit2gtk-4.0*`，只提供 `libwebkit2gtk-4.1`（基于 libsoup3）。因此：
 
 - 按官方文档 `apt install libwebkit2gtk-4.0-dev` → 包不存在，构建无法开始；
 - 即使把 Debian 12 的 4.0 dev 包搬过来，运行时也会直接 abort：
@@ -121,10 +128,10 @@ libjavascriptcoregtk-4.1-0, libayatana-appindicator3-1, libssl3t64, libc6 (>= 2.
 tesseract-ocr, ...
 ```
 
-Debian 12 的包在该环境下已无法直接使用，建议直接装 Release 里提供的 arm64 包：
+各发行版该装哪个包见第 7 节；Debian 12 上游包在 4.1 环境下不可用。
 
 ```sh
-sudo apt install ./pot_3.0.7_arm64.deb
+sudo apt install ./pot_3.0.8_arm64.deb
 ```
 
 ## 5. 已验证
@@ -142,20 +149,37 @@ sudo apt install ./pot_3.0.7_arm64.deb
 - **Rust 必须固定 1.99.1**（或更早）。更新的编译器里 `!` 不再实现 `FromIterator<()>`
   （rust-lang/rust#148922），会让 `wl-clipboard-rs 0.8.1`（`arboard` 的 Wayland 剪贴板后端）
   在 `copy.rs:591` 报 `E0277`。CI 三条 workflow 都用 `dtolnay/rust-toolchain@1.99.1`。
-- 只实测了 **arm64** 真机；x86_64 由 CI 构建产出，但没有在本机跑过。
+- arm64 在 Debian 13 真机实测；x86_64 由 CI 构建产出，未在真机跑过。
 - 未迁移到 Tauri 2，因此仍继承 Tauri 1 在 Linux 上的既有问题（如个别桌面环境的托盘/快捷键差异）。
 - OCR 走的是系统 `tesseract`，需要安装对应语言包（`tesseract-ocr-chi-sim` 等）。
 - `vendor/` 里的三个 crate 是从 crates.io 拷出来打的补丁，体积约 2 MB；升级 Tauri/WebKitGTK 时
   需要重新对照 `vendor/PATCHES.md` 复核。
 
-## 7. CI 构建矩阵
+## 7. 各发行版装哪个包
+
+| 发行版 | 包 | 安装 |
+| --- | --- | --- |
+| Debian / Ubuntu / Mint / Pop!_OS | `pot_<ver>_<arch>.deb` | `sudo apt install ./pot_*.deb` |
+| Fedora / RHEL / CentOS Stream / openSUSE | `pot-<ver>-1.<arch>.rpm` | `sudo dnf install ./pot-*.rpm` / `sudo zypper in ./pot-*.rpm` |
+| Arch / Manjaro / EndeavourOS / CachyOS | `pot-<ver>-1-<arch>.pkg.tar.zst` | `sudo pacman -U ./pot-*.pkg.tar.zst` |
+| 任意发行版（免安装） | `pot_<ver>_<arch>.AppImage` | `chmod +x` 后直接运行 |
+
+Arch 包由 `scripts/package-arch.sh` 现场组装（Tauri 1 没有 Arch 后端）：一个
+`.pkg.tar.zst` 本质上就是「zstd 压缩的 tar + 根目录的 `.PKGINFO`」，因此可以在 Ubuntu
+构建机上生成、在 Arch 上正常 `pacman -U`。依赖名按 Arch 的写法声明
+（`webkit2gtk-4.1`、`gtk3`、`libsoup3`、`libayatana-appindicator`、`tesseract` …）。
+
+> Arch 的滚动更新可能让二进制先于系统库变动，遇到 `GLIBC_*` 或库版本问题请直接用
+> AppImage，或按第 3 节自行编译。
+
+## 8. CI 构建矩阵
 
 `.github/workflows/` 下三条 workflow，全部是**原生 runner**，不做交叉编译：
 
 | workflow | runner | 目标 | 产物 |
 | --- | --- | --- | --- |
-| `build-linux.yml` | `ubuntu-24.04` | x86_64 | `.deb` + `.rpm` + `.AppImage` |
-| `build-linux.yml` | `ubuntu-24.04-arm` | arm64 | `.deb` + `.rpm` |
+| `build-linux.yml` | `ubuntu-24.04` | x86_64 | `.deb` + `.rpm` + `.pkg.tar.zst` + `.AppImage` |
+| `build-linux.yml` | `ubuntu-24.04-arm` | arm64 | `.deb` + `.rpm` + `.pkg.tar.zst` |
 | `build-macos.yml` | `macos-15` (Apple Silicon) | aarch64 / x86_64（交叉） | `.dmg` |
 | `build-windows.yml` | `windows-latest` | x86_64 / i686 / arm64 | NSIS `-setup.exe` |
 
@@ -171,7 +195,7 @@ gh workflow run build-macos.yml --repo mlfc666/pot-desktop-webkit41
 gh workflow run build-windows.yml --repo mlfc666/pot-desktop-webkit41
 ```
 
-打 tag 推送（`git push origin v3.0.7-webkit41`）时三条 workflow 都会跑，并把产物
+打 tag 推送（`git push origin v3.0.8`）时三条 workflow 都会跑，并把产物
 附加到同名 Release。PR 只跑构建，不发 Release。
 
 几个刻意的取舍：
@@ -188,7 +212,7 @@ gh workflow run build-windows.yml --repo mlfc666/pot-desktop-webkit41
 - macOS 默认产出**未签名** DMG：把空的 `APPLE_*` 变量塞给 Tauri 1 会让它用空身份去 codesign 而失败。
   需要签名时再补 keychain 导入步骤和 secrets。
 
-## 8. 许可
+## 9. 许可
 
 原项目为 **GPL-3.0**，本仓库保留原 `LICENSE` 与完整 git 历史，属于 GPL-3.0 的修改版本，
 同样以 GPL-3.0 分发。修改点见本文第 2 节及 `src-tauri/vendor/PATCHES.md`。

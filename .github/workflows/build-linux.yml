@@ -104,6 +104,9 @@ jobs:
       - name: Build the .deb with dpkg -S derived dependencies
         run: bash scripts/package-deb.sh
 
+      - name: Build the Arch package (.pkg.tar.zst)
+        run: bash scripts/package-arch.sh
+
       # The Tauri 1 bundler is only used for rpm/AppImage here: its .deb
       # dependency table is written for WebKitGTK 4.0. Kept separate and
       # non-blocking so a bundler problem never costs us the .deb.
@@ -124,6 +127,7 @@ jobs:
         run: |
           mkdir -p artifacts
           cp target/deb/*.deb target/deb/*.sha256 artifacts/ 2>/dev/null || true
+          cp target/arch/*.pkg.tar.zst target/arch/*.pkg.tar.zst.sha256 artifacts/ 2>/dev/null || true
           find src-tauri/target/${{ matrix.target }}/release/bundle -name '*.rpm' -exec cp {} artifacts/ \; 2>/dev/null || true
           if [[ "${{ matrix.appimage }}" == "true" ]]; then
             find src-tauri/target/${{ matrix.target }}/release/bundle -name '*.AppImage*' -exec cp {} artifacts/ \; 2>/dev/null || true
