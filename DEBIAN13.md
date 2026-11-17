@@ -156,8 +156,7 @@ sudo apt install ./pot_3.0.7_arm64.deb
 | --- | --- | --- | --- |
 | `build-linux.yml` | `ubuntu-24.04` | x86_64 | `.deb` + `.rpm` + `.AppImage` |
 | `build-linux.yml` | `ubuntu-24.04-arm` | arm64 | `.deb` + `.rpm` |
-| `build-macos.yml` | `macos-15` (Apple Silicon) | aarch64 | `.dmg` |
-| `build-macos.yml` | `macos-13` (Intel) | x86_64 | `.dmg` |
+| `build-macos.yml` | `macos-15` (Apple Silicon) | aarch64 / x86_64（交叉） | `.dmg` |
 | `build-windows.yml` | `windows-latest` | x86_64 / i686 / arm64 | NSIS `-setup.exe` |
 
 为什么 Linux 必须用 24.04 而不是 22.04：22.04 只有 WebKitGTK 4.0，本 fork 的
