@@ -69,24 +69,41 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build frontend and RPM/AppImage bundles
-        run: |
-          bundles=rpm
-          if [[ "${{ matrix.appimage }}" == "true" ]]; then bundles=rpm,appimage; fi
-          pnpm tauri build --target ${{ matrix.target }} --bundles "$bundles"
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Compile the app
+        run: cargo build --release --features custom-protocol --manifest-path src-tauri/Cargo.toml
 
       - name: Build the .deb with dpkg -S derived dependencies
-        run: bash scripts/package-deb.sh --target ${{ matrix.target }}
+        run: bash scripts/package-deb.sh
+
+      # The Tauri 1 bundler is only used for rpm/AppImage here: its .deb
+      # dependency table is written for WebKitGTK 4.0. Kept separate and
+      # non-blocking so a bundler problem never costs us the .deb.
+      - name: Build RPM (and AppImage on x86_64)
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bundles=rpm
+          if [[ "${{ matrix.appimage }}" == "true" ]]; then bundles=rpm,appimage; fi
+          if ! pnpm tauri build --target ${{ matrix.target }} --bundles "$bundles" --verbose > /tmp/bundler.log 2>&1; then
+            tail -n 40 /tmp/bundler.log
+            echo "::error::tauri bundler failed ($bundles): $(grep -m3 -iE 'error|cannot|failed' /tmp/bundler.log | tr '\n' ' ' | cut -c1-400)"
+            exit 1
+          fi
+          tail -n 15 /tmp/bundler.log
 
       - name: Collect packages
         run: |
           mkdir -p artifacts
-          cp target/deb/*.deb target/deb/*.sha256 artifacts/
-          find src-tauri/target/${{ matrix.target }}/release/bundle -name '*.rpm' -exec cp {} artifacts/ \;
+          cp target/deb/*.deb target/deb/*.sha256 artifacts/ 2>/dev/null || true
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name '*.rpm' -exec cp {} artifacts/ \; 2>/dev/null || true
           if [[ "${{ matrix.appimage }}" == "true" ]]; then
-            find src-tauri/target/${{ matrix.target }}/release/bundle -name '*.AppImage*' -exec cp {} artifacts/ \;
+            find src-tauri/target/${{ matrix.target }}/release/bundle -name '*.AppImage*' -exec cp {} artifacts/ \; 2>/dev/null || true
           fi
           ls -la artifacts
+          test -n "$(ls -A artifacts)" || { echo "::error::no packages produced"; exit 1; }
 
       - uses: actions/upload-artifact@v4
         with:
