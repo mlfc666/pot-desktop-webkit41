@@ -34,7 +34,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned on purpose: wl-clipboard-rs 0.8.1 (pulled in by arboard) does not
+      # compile on newer compilers — `!` no longer implements FromIterator<()>
+      # after the type-inference change tracked in rust-lang/rust#148922. 1.99.1
+      # is the version the packages in the release were built and tested with.
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Record the toolchain
+        run: rustc -vV
       - uses: Swatinem/rust-cache@v2
         with:
           key: windows-${{ matrix.arch }}

@@ -53,7 +53,13 @@ jobs:
       - name: Expose the pkg-config shim
         run: echo "PKG_CONFIG_PATH=$PWD/.webkit41-shim" >> "$GITHUB_ENV"
 
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned on purpose: wl-clipboard-rs 0.8.1 (pulled in by arboard) does not
+      # compile on newer compilers — `!` no longer implements FromIterator<()>
+      # after the type-inference change tracked in rust-lang/rust#148922. 1.99.1
+      # is the version the packages in the release were built and tested with.
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Record the toolchain
+        run: rustc -vV
       - uses: Swatinem/rust-cache@v2
         with:
           key: linux-${{ matrix.arch }}
@@ -82,6 +88,7 @@ jobs:
             # networks; annotations travel over api.github.com and carry the
             # first compiler errors with them.
             while IFS= read -r line; do echo "::error::$line"; done < <(grep -E '^error' /tmp/cargo.log | head -5 | cut -c1-400)
+            cp /tmp/cargo.log cargo.log
             exit 1
           fi
           tail -n 5 /tmp/cargo.log
@@ -91,7 +98,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cargo-log-${{ matrix.arch }}
-          path: /tmp/cargo.log
+          path: cargo.log
           if-no-files-found: ignore
 
       - name: Build the .deb with dpkg -S derived dependencies
