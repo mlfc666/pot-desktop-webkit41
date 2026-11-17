@@ -64,7 +64,24 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build NSIS installer
-        run: pnpm tauri build --target ${{ matrix.target }} --bundles nsis
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! pnpm tauri build --target ${{ matrix.target }} --bundles nsis > /tmp/bundle.log 2>&1; then
+            tail -n 40 /tmp/bundle.log
+            while IFS= read -r line; do echo "::error::$line"; done < <(grep -iE 'error|failed|cannot' /tmp/bundle.log | head -5 | cut -c1-400)
+            cp /tmp/bundle.log bundle.log
+            exit 1
+          fi
+          tail -n 10 /tmp/bundle.log
+
+      - name: Keep the bundler log if the build broke
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-log-windows-${{ matrix.arch }}
+          path: bundle.log
+          if-no-files-found: ignore
 
       - name: Collect packages
         shell: pwsh

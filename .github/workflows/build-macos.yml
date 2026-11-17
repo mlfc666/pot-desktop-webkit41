@@ -56,18 +56,27 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      # Signing and notarization stay off unless the repository defines the
-      # secrets; an unsigned DMG is still usable locally (Gatekeeper requires
-      # a right-click open on first launch).
+      # Unsigned on purpose. Passing empty APPLE_* variables makes Tauri 1 try
+      # to codesign with an empty identity, which fails; a repository that has
+      # the secrets should add them back together with the keychain import step.
       - name: Build DMG
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-        run: pnpm tauri build --target ${{ matrix.target }} --bundles dmg
+        run: |
+          set -o pipefail
+          if ! pnpm tauri build --target ${{ matrix.target }} --bundles dmg > /tmp/bundle.log 2>&1; then
+            tail -n 40 /tmp/bundle.log
+            while IFS= read -r line; do echo "::error::$line"; done < <(grep -iE 'error|failed|cannot' /tmp/bundle.log | head -5 | cut -c1-400)
+            cp /tmp/bundle.log bundle.log
+            exit 1
+          fi
+          tail -n 10 /tmp/bundle.log
+
+      - name: Keep the bundler log if the build broke
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-log-macos-${{ matrix.arch }}
+          path: bundle.log
+          if-no-files-found: ignore
 
       - name: Collect packages
         run: |
